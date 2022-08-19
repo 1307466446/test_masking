@@ -1,6 +1,9 @@
 package com.skytop.cn.masking.func;
 
-import com.alibaba.fastjson2.JSONObject;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.skytop.cn.masking.entity.ConfigurationTable;
 import org.apache.flink.api.common.state.BroadcastState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.ReadOnlyBroadcastState;
@@ -23,9 +26,10 @@ public class TableProcessFunction extends BroadcastProcessFunction<JSONObject, S
     @Override
     public void processBroadcastElement(String s, BroadcastProcessFunction<JSONObject, String, JSONObject>.Context context, Collector<JSONObject> collector) throws Exception {
         JSONObject jsonObject = JSONObject.parseObject(s);
-        JSONObject after = jsonObject.getJSONObject("after");
+        String after = jsonObject.getString("after");
+        ConfigurationTable configurationTable = JSON.parseObject(after, ConfigurationTable.class);
         BroadcastState<String, String> broadcastState = context.getBroadcastState(mapStateDescriptor);
-        broadcastState.put(after.getString("db_table_column"), after.getString("desensitization_func"));
+        broadcastState.put(configurationTable.getDbTableColumn(), configurationTable.getDesensitizationFunc());
     }
 
     @Override
@@ -37,10 +41,11 @@ public class TableProcessFunction extends BroadcastProcessFunction<JSONObject, S
         Set<String> keySet = after.keySet();
         for (String column : keySet) {
             String path = database + "/" + table + "/" + column;
-            String state_value = broadcastState.get(path);
-            if (state_value != null) {
+            // stateValue对应的脱敏方法名
+            String stateValue = broadcastState.get(path);
+            if (stateValue != null) {
                 String value = after.getString(column);
-                Method method = DesensitizeUdf.class.getMethod(state_value, String.class);
+                Method method = DesensitizeUdf.class.getMethod(stateValue, String.class);
                 Object invoke = method.invoke(DesensitizeUdf.class, value);
                 if (invoke != null) {
                     after.put(column, String.valueOf(invoke));

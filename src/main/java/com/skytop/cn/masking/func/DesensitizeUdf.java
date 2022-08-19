@@ -28,7 +28,7 @@ public class DesensitizeUdf {
 
     /**
      * 企业名称脱敏
-     * 脱敏规则：从第4位开始隐藏，最多隐藏6位。
+     * 脱敏规则：从第2位开始隐藏。
      *
      * @param companyName
      * @return
@@ -43,7 +43,7 @@ public class DesensitizeUdf {
 
     /**
      * address脱敏
-     * 规则说明：显示前3位
+     * 规则说明：显示前2位
      *
      * @param address
      * @return
