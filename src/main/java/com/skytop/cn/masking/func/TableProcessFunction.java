@@ -4,11 +4,14 @@ package com.skytop.cn.masking.func;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.skytop.cn.masking.entity.ConfigurationTable;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.state.BroadcastState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.ReadOnlyBroadcastState;
 import org.apache.flink.streaming.api.functions.co.BroadcastProcessFunction;
 import org.apache.flink.util.Collector;
+
+
 import java.lang.reflect.Method;
 import java.util.Set;
 
@@ -43,12 +46,13 @@ public class TableProcessFunction extends BroadcastProcessFunction<JSONObject, S
             String path = database + "/" + table + "/" + column;
             // stateValue对应的脱敏方法名
             String stateValue = broadcastState.get(path);
-            if (stateValue != null) {
-                String value = after.getString(column);
+            String value = after.getString(column);
+            if (stateValue != null && StringUtils.isNotEmpty(value)) {
                 Method method = DesensitizeUdf.class.getMethod(stateValue, String.class);
                 Object invoke = method.invoke(DesensitizeUdf.class, value);
                 if (invoke != null) {
                     after.put(column, String.valueOf(invoke));
+                    continue;
                 }
             }
         }

@@ -23,9 +23,9 @@ public class DruidDSUtil {
         // 设置密码
         druidDataSource.setPassword(PASSWORD);
         // 设置初始化连接池时池中连接的数量
-        druidDataSource.setInitialSize(5);
+        druidDataSource.setInitialSize(20);
         // 设置同时活跃的最大连接数
-        druidDataSource.setMaxActive(20);
+        druidDataSource.setMaxActive(40);
         // 设置空闲时的最小连接数，必须介于 0 和最大连接数之间，默认为 0
         druidDataSource.setMinIdle(5);
         // 设置没有空余连接时的等待时间，超时抛出异常，-1 表示一直等待

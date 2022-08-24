@@ -1,8 +1,6 @@
 package com.skytop.cn.masking.func;
 
-
 import com.alibaba.druid.pool.DruidDataSource;
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.skytop.cn.masking.utils.DruidDSUtil;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -18,32 +16,36 @@ import java.text.SimpleDateFormat;
 import java.util.Set;
 
 /**
- * @author wzh18
+ * @author Blue红红
+ * @description 功能描述
+ * @create 2022/8/22 1:23
  */
-public class DesensitizeSinkFunction extends RichSinkFunction<JSONObject> {
+public class DesensitizeSinkFunction02 extends RichSinkFunction<Tuple2<Object, JSONObject>> {
+
     private PreparedStatement preparedStatement;
     private Connection connection;
     private DruidDataSource dataSource;
+    
+    Long count = 0L;
 
     @Override
     public void open(Configuration parameters) throws Exception {
         dataSource = DruidDSUtil.createDataSource();
         connection = dataSource.getConnection();
+        connection.setAutoCommit(false);
     }
 
     @Override
-    public void invoke(JSONObject value, Context context) throws Exception {
-        String table = value.getString("table");
+    public void invoke(Tuple2<Object, JSONObject> value, Context context) throws Exception {
+        Object o = value.f0;
+        JSONObject jsonObject = value.f1;
+        String table = jsonObject.getString("table");
         StringBuilder builder = new StringBuilder();
         builder.append("insert into ")
                 .append("wangzhihong")
                 .append(".")
-                .append("a_"+table)
+                .append("a_" + table)
                 .append(" ");
-        String className = CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, table);
-        Class<?> clazz = Class.forName("com.skytop.cn.masking.entity." + className);
-        String after1 = value.getString("after");
-        Object o = JSON.parseObject(after1, clazz);
         Field[] fields = o.getClass().getDeclaredFields();
         builder.append(" values (");
         for (int i = 0; i < fields.length; i++) {
@@ -55,7 +57,7 @@ public class DesensitizeSinkFunction extends RichSinkFunction<JSONObject> {
         }
         String sql = builder.toString();
         preparedStatement = connection.prepareStatement(sql);
-        JSONObject jsonData = value.getJSONObject("after");
+        JSONObject jsonData = jsonObject.getJSONObject("after");
         for (int i = 0; i < fields.length; i++) {
             fields[i].setAccessible(true);
             // Long => java.sql.Date
@@ -81,11 +83,19 @@ public class DesensitizeSinkFunction extends RichSinkFunction<JSONObject> {
             }
             preparedStatement.setObject(i + 1, fields[i].get(o));
         }
-        preparedStatement.execute();
+        preparedStatement.addBatch();
+        preparedStatement.executeBatch();
+
     }
 
     @Override
     public void close() throws Exception {
-        connection.close();
+        if (connection != null) {
+            connection.close();
+        }
+        if (preparedStatement != null) {
+            preparedStatement.close();
+        }
+
     }
 }
